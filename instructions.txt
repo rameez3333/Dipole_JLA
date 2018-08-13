@@ -1,0 +1,1 @@
+This code requires the data and covmat directories from jla_likelihood_v6.tgz to execute.
