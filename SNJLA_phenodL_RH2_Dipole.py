@@ -9,9 +9,9 @@ usage = 'usage: %prog [options]'
 parser = OptionParser(usage)
 parser.add_option("-d", "--details", action="store", type="int", default=5, dest="DET", help="1: Do pheno Q fit with JLA only. 2: Fit for a non scale dependent dipolar modulation in Q. 3: Fit for a top hat scale dependent dipolar modulation in Q. 4. Fit for an exponentially falling scale dependent dipolar modulation in Q. 5. Fit for a linearly falling scale dependent dipolar modulation in Q. ")
 parser.add_option("-v", "--verbose", action = "store_true", default=False, dest="VERB", help = "Want lots of diagnostic outputs?")
-parser.add_option("-p", "--pecvelcov", action = "store_true", default=False, dest="PVCO", help = "Exclude the peculiar velocity covariance matrix?")
+parser.add_option("-p", "--pecvelcov", action = "store_true", default=True, dest="PVCO", help = "Exclude the peculiar velocity covariance matrix?")
 parser.add_option("-f", "--forcezcmb", action = "store_true", default=False, dest="FZCMB", help = "Use Zcmb instead of zhel")
-parser.add_option("-r", "--reversebias", action = "store_true", default=False, dest="REVB", help = "Reverse the bias corrections")
+parser.add_option("-r", "--reversebias", action = "store_true", default=True, dest="REVB", help = "Reverse the bias corrections")
 parser.add_option("-s", "--scan", action = "store_true", default=False, dest="SCAN", help = "Whether to do a scan")
 parser.add_option("-q", "--qm", action = "store", type='float', default=-2.46104825e-01, dest="QMS", help = "Qm parameter to scan, add 3 because weird negative number issue")
 parser.add_option("-t", "--thickness", action = "store", type='float', default=0.5, dest="THICK", help = "thickness around Qd to scan")
@@ -107,7 +107,7 @@ def dLPhenoF4(z, q0, j0, s0, a0=1 ,k=0, t=3):
 #Z.transpose()[0] = Z.transpose()[0]*100. + np.random.normal(scale = 3.77e-4, size = len(Z.transpose()[0]))
 #### FULL LIKELIHOOD ####
 
-covmatcomponents = [ "cal", "model", "bias", "dust", "sigmaz", "sigmalens", "nonia" ]
+covmatcomponents = [ "cal", "model", "bias", "dust", "sigmalens", "nonia" ]
 
 if not options.PVCO:
     covmatcomponents.append("pecvel")
@@ -342,25 +342,25 @@ pre_found_noacc = np.array([  6.84438318e-02,   3.42219159e-02,   1.32357422e-01
 # Check that these are really the minima !
 
 if options.DET ==2:
-    bnds = bnds + ((-4., 4.),)
+    bnds = bnds + ((-10., 10.),)
     defBF = [0.1]
     rads = np.linspace(0., 3000., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
 
 if options.DET ==3:
-    bnds = bnds + ((-4., 4.), (0, 1.5),)
+    bnds = bnds + ((-10., 10.), (0, 1.5),)
     defBF = [0.1, 0.1] 
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
     
 if options.DET ==4:
-    bnds = bnds + ((-4., 4.), (0, 1.5),)
-    defBF = [0.1, 1.3]
+    bnds = bnds + ((-10., 10.), (0, 1.5),)
+    defBF = [-8.0, 0.03]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
 
 if options.DET ==5:
-    bnds = bnds + ((-4., 4.), (0, 30),)
+    bnds = bnds + ((-10., 10.), (0, 30),)
     defBF = [0.1, 1.3]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])

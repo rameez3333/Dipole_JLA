@@ -7,15 +7,18 @@ import time
 
 usage = 'usage: %prog [options]'
 parser = OptionParser(usage)
-parser.add_option("-d", "--details", action="store", type="int", default=5, dest="DET", help="1: Do pheno Q fit with JLA only. 2: Fit for a non scale dependent dipolar modulation in Q. 3: Fit for a top hat scale dependent dipolar modulation in Q. 4. Fit for an exponentially falling scale dependent dipolar modulation in Q. 5. Fit for a linearly falling scale dependent dipolar modulation in Q. ")
+parser.add_option("-d", "--details", action="store", type="int", default=4, dest="DET", help="1: Do pheno Q fit with JLA only. 2: Fit for a non scale dependent dipolar modulation in Q. 3: Fit for a top hat scale dependent dipolar modulation in Q. 4. Fit for an exponentially falling scale dependent dipolar modulation in Q. 5. Fit for a linearly falling scale dependent dipolar modulation in Q. ")
 parser.add_option("-v", "--verbose", action = "store_true", default=False, dest="VERB", help = "Want lots of diagnostic outputs?")
-parser.add_option("-p", "--pecvelcov", action = "store_true", default=False, dest="PVCO", help = "Exclude the peculiar velocity covariance matrix?")
+parser.add_option("-p", "--pecvelcov", action = "store_true", default=True, dest="PVCO", help = "Exclude the peculiar velocity covariance matrix?")
 parser.add_option("-f", "--forcezcmb", action = "store_true", default=False, dest="FZCMB", help = "Use Zcmb instead of zhel")
 parser.add_option("-r", "--reversebias", action = "store_true", default=True, dest="REVB", help = "Reverse the bias corrections")
 parser.add_option("-s", "--scan", action = "store_true", default=False, dest="SCAN", help = "Whether to do a scan")
 parser.add_option("-q", "--qm", action = "store", type='float', default=-2.46104825e-01, dest="QMS", help = "Qm parameter to scan, add 3 because weird negative number issue")
+parser.add_option("-m", "--nra", action = "store", type='float', default=168.0, dest="NRA", help = "Right Ascension of the dipole direction in degrees")
+parser.add_option("-n", "--ndec", action = "store", type='float', default=-7.0, dest="NDEC", help = "Declination of the dipole direction in degrees")
 parser.add_option("-t", "--thickness", action = "store", type='float', default=0.5, dest="THICK", help = "thickness around Qd to scan")
 parser.add_option("-w", "--what", action = "store", type="int", default=1, dest="WHICH", help = "Which parameters to scan? 1 for cosmological (qm, qd). 2 for Dipole velocity parameters (qm vs S), 3 for qm qd but cluster job")
+
 parser.add_option("-a", "--acc", action = "store", type="int", default=101, dest="ACC", help = "How many divisions?")
 parser.add_option("-i", "--P1L", action = "store", type="float", default=-5, dest="P1L", help = "Parameter 1 lower bound")
 parser.add_option("-j", "--P1U", action = "store", type="float", default=-5, dest="P1U", help = "Parameter 1 upper bound")
@@ -32,6 +35,7 @@ elif options.DET==3:
     STYPE='Flat'
 elif options.DET==4:
     STYPE='Exp'
+    print 'fitting', STYPE, 'profile'
 elif options.DET==5:
     STYPE='Lin'
 else:
@@ -41,7 +45,7 @@ else:
     #velproftype='monolin'
 
 
-ofname = 'FOuts/OutQKinPhenodL_D' + str(options.DET)
+ofname = 'DirScans/OutQKinPhenodL_D' + str(options.DET) + '_' + str(options.NDEC).replace('-', 'm') + '_' + str(options.NRA)
 
 
 
@@ -52,8 +56,8 @@ c = 299792.458 # km/s
 H0 = 70 #(km/s) / Mpc
 
 N=740 ; # Number of SNe
-CMBdipdec = -7.0
-CMBdipra = 168.0
+CMBdipdec = options.NDEC
+CMBdipra = options.NRA
 
 
 # Spline interpolation of luminosity distance
@@ -64,7 +68,8 @@ CMBdipra = 168.0
 Z = np.load( 'JLADirZInc.npy' ) ;
 Z[:,6][Z[:,6]<0.] = Z[:,6][Z[:,6]<0.] + 360.
 if options.REVB:
-    jlarr = np.genfromtxt('data/jla_lcparams.txt', skip_header=1)
+    print 'reversing bias'
+    jlarr = np.genfromtxt('../jla_likelihood_v6/data/jla_lcparams.txt', skip_header=1)
     Z[:,1] = Z[:,1] - jlarr[:,-1]
     ofname = ofname+'RB'
 #Same as JLA.npy, but with additional columns [6] is RAdeg, [7] is DECdeg, [8] is Zcmb, [9] is Zhel
@@ -82,8 +87,7 @@ if options.REVB:
 def cdAngle(ra1, dec1, ra2, dec2):
     return np.cos(np.deg2rad(dec1))*np.cos(np.deg2rad(dec2))*np.cos(np.deg2rad(ra1) - np.deg2rad(ra2))+np.sin(np.deg2rad(dec1))*np.sin(np.deg2rad(dec2))
     
-    
-    
+        
     
     
 def MU( OM, OL ):
@@ -127,9 +131,10 @@ def dLPhenoF4(z, q0, j0, s0, a0=1 ,k=0, t=3):
 
 #print Z
 
-covmatcomponents = [ "cal", "model", "bias", "dust", "sigmalens", "nonia", "sigmaz" ]
+covmatcomponents = [ "cal", "model", "bias", "dust", "sigmalens", "nonia" ]
 
 if not options.PVCO:
+    print 'Excluding peculiar velocity covariance'
     covmatcomponents.append("pecvel")
 else:
     ofname = ofname+'_NoPVCovWSZ'
@@ -174,6 +179,7 @@ def RESVF3( Q0, J0 , A , B , M0, X0, C0 ): #Total residual, \hat Z - Y_0*A
     return np.hstack( [ (Z[i,1:4] -np.array([mu[i],0,0]) - Y0A ) for i in range(N) ] )  
 
 
+
 def RESVF3Dip( Q0, J0 , A , B , M0, X0, C0, QD, DS=np.inf, stype = STYPE): #Total residual, \hat Z - Y_0*A
     Y0A = np.array([ M0-A*X0+B*C0, X0, C0 ])
     cosangle = cdAngle(CMBdipra, CMBdipdec, Z[:,6], Z[:,7])
@@ -191,10 +197,9 @@ def RESVF3Dip( Q0, J0 , A , B , M0, X0, C0, QD, DS=np.inf, stype = STYPE): #Tota
         #print 'Here', Qdip
         Q = Q0 + Qdip
     elif stype=='Lin':
-        Qd = QD - Zc*DS # The DS parameter here is the inverse of what is shown in the paper. Invert the final value.
+        Qd = QD - Zc*DS
         Qd[Qd<0] = 0
-        #Note that for linear sc dependent, the dipole magnitude is the negative of the fit parameter due to the following minus sign
-        Q = Q0 - Qd*cosangle
+        Q = Q0 + Qd*cosangle
     mu = MUZ(Zc, Q, J0) ;
     #print 'Now', Q0, J0, K, V0, V1
     return np.hstack( [ (Z[i,1:4] -np.array([mu[i],0,0]) - Y0A ) for i in range(N) ] )  
@@ -303,6 +308,22 @@ pre_found_flat = np.array([ -3.13971317e-01,   3.72802513e-02,
          3.05785887e+00,  -1.60647355e-02,   5.04579638e-03,
         -1.90471016e+01,   1.17220205e-02])
 
+
+pre_found_empty = np.array([   -0.45,   0.5,  
+                            3.35901703e-02,   8.68743215e-01,   3.05069685e+00,
+                            -1.47499271e-02,   5.05601201e-03,  -1.90138708e+01,
+                            1.19714588e-02])
+
+pre_found_ZM = np.array([  9.86339832e-11,   9.39491731e-02,
+                            3.58225394e-02,   8.69494545e-01,   3.05946289e+00,
+                            -1.68347116e-02,   5.07400516e-03,  -1.90319985e+01,
+                            1.18656604e-02])
+
+pre_found_EdS = np.array([  9.99999985e-01,   4.19831315e-09,
+                        1.43884399e-02,   8.59506526e-01,   3.03882366e+00,
+                        9.26889810e-03,   5.11253864e-03,  -1.88388322e+01,
+                        1.55137148e-02])
+
 pre_found_noacc = np.array([  0.00000000e+00,  -4.33395860e-01,
          1.32302300e-01,   3.25910059e-02,   8.67865293e-01,
          3.04412422e+00,  -1.30892882e-02,   5.03792662e-03,
@@ -314,7 +335,7 @@ pre_found_noacc = np.array([  0.00000000e+00,  -4.33395860e-01,
 #print tr
 
 if options.DET ==2:
-    bnds = bnds + ((-4., 4.),)
+    bnds = bnds + ((-10., 10.),)
     defBF = [0.1]
     rads = np.linspace(0., 3000., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
@@ -332,8 +353,8 @@ if options.DET ==3:
 
 
 if options.DET ==4:
-    bnds = bnds + ((-4., 4.), (0, 1.5))
-    defBF = [0.1, 1.3]
+    bnds = bnds + ((-25., 25.), (0, 1.5))
+    defBF = [-8.0, 0.03]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
     pre_found_flat = np.hstack([pre_found_flat, defBF])
@@ -341,7 +362,7 @@ if options.DET ==4:
 
 
 if options.DET ==5:
-    bnds = bnds + ((-10., 10.), (0, 300))
+    bnds = bnds + ((-4., 4.), (0, 30))
     defBF = [0.1, 1.3]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
@@ -354,6 +375,7 @@ estdict=OrderedDict()
 
 # Check that these are really the minima !
 estdict['MLE'] = optimize.minimize(m2loglike, pre_found_best, method = 'SLSQP', tol=10**-12,  options={'maxiter':24000}, bounds=bnds)
+
 
 print 'Basic :', estdict['MLE'] 
 
@@ -481,11 +503,11 @@ if not options.SCAN:
 
     print 'No Acc:', estdict['MCENoacc']
 
-    estdict['MCEflat'] = optimize.minimize(m2loglike, pre_found_flat, method = 'SLSQP', constraints = ({'type':'eq', 'fun':m2CONSflat}, ), tol=10**-12, bounds=bnds)
+    #estdict['MCEflat'] = optimize.minimize(m2loglike, pre_found_flat, method = 'SLSQP', constraints = ({'type':'eq', 'fun':m2CONSflat}, ), tol=10**-12, bounds=bnds)
 
-    print "=================="
+    #print "=================="
 
-    print 'Flat:', estdict['MCEflat']
+    #print 'Flat:', estdict['MCEflat']
 
     if options.DET >=2:
         estdict['MCENoDip'] = optimize.minimize(m2loglike, pre_found_flat, method = 'SLSQP', constraints = ({'type':'eq', 'fun':m2NODip}, ), tol=10**-12, bounds=bnds)
@@ -510,8 +532,7 @@ if not options.SCAN:
         aicc = (2.*plen**2. + 2*plen)/(740.-plen-1.)
         l = l+'&'+of.format(aic)+'&'+of.format(aicc)
         l = l+'&'+str(estdict[pk]['success'])
-        
-        #fout.write(l+'\n')
+        fout.write(l+'\n')
 
     fout.close()
 
