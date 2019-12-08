@@ -96,7 +96,6 @@ def MU( OM, OL ):
 def MUZ(Zc, Q0, J0):
     k = 5.*np.log10( c/H0 * dLPhenoF3(Zc, Q0, J0)) + 25.   
     if np.any(np.isnan(k)) or np.any(np.isinf(k)):
-        #print 'Fuck', Q0, J0, OK
         #print np.min(Zc[np.isnan(k)]), np.max(Zc[np.isnan(k)]), len(Zc[np.isnan(k)])
         k[np.isnan(k)] = 63000.15861331456834
         k[np.isinf(k)] = 630000.15661331456834
@@ -353,7 +352,7 @@ if options.DET ==3:
 
 
 if options.DET ==4:
-    bnds = bnds + ((-25., 25.), (0, 1.5))
+    bnds = bnds + ((-25., 25.), (0.01, 1.5))
     defBF = [-8.0, 0.03]
     rads = np.linspace(0., 10., 300)
     pre_found_best = np.hstack([pre_found_best, defBF])
